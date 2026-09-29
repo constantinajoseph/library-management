@@ -188,3 +188,91 @@ def add_book(title, author, category, copies):
     conn.commit()
     conn.close()
     return True, "Book added."
+    def request_book(member_id, book_id):
+    from datetime import date
+    conn = sqlite3.connect("library.db")
+    cur = conn.cursor()
+
+    cur.execute(
+        "SELECT 1 FROM requests WHERE member_id=? AND book_id=? AND status='Pending'",
+        (member_id, book_id))
+    if cur.fetchone():
+        conn.close()
+        return False, "You have already requested this book."
+
+    cur.execute(
+        "SELECT 1 FROM transactions WHERE member_id=? AND book_id=? AND return_date IS NULL",
+        (member_id, book_id))
+    if cur.fetchone():
+        conn.close()
+        return False, "You already have this book."
+
+    cur.execute(
+        "INSERT INTO requests (member_id, book_id, status, requested_on) VALUES (?, ?, 'Pending', ?)",
+        (member_id, book_id, date.today().isoformat()))
+    conn.commit()
+    conn.close()
+    return True, "Request sent. Wait for the admin to approve it."
+
+
+def get_member_requests(member_id):
+    conn = sqlite3.connect("library.db")
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT r.request_id, b.title, r.status, r.requested_on, r.note
+        FROM requests r JOIN books b ON b.book_id = r.book_id
+        WHERE r.member_id = ?
+        ORDER BY r.request_id DESC
+    """, (member_id,))
+    rows = cur.fetchall()
+    conn.close()
+    return rows
+
+
+def get_pending_requests():
+    conn = sqlite3.connect("library.db")
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT r.request_id, m.reg_no, m.name, b.title, b.available_copies, r.requested_on
+        FROM requests r
+        JOIN members m ON m.member_id = r.member_id
+        JOIN books b ON b.book_id = r.book_id
+        WHERE r.status = 'Pending'
+        ORDER BY r.request_id
+    """)
+    rows = cur.fetchall()
+    conn.close()
+    return rows
+
+
+def approve_request(request_id):
+    conn = sqlite3.connect("library.db")
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT member_id, book_id FROM requests WHERE request_id=? AND status='Pending'",
+        (request_id,))
+    row = cur.fetchone()
+    conn.close()
+    if row is None:
+        return False, "This request is no longer pending."
+
+    member_id, book_id = row
+    ok, message = issue_book(member_id, book_id)  # your existing function
+    if not ok:
+        return False, message
+
+    conn = sqlite3.connect("library.db")
+    conn.execute("UPDATE requests SET status='Approved' WHERE request_id=?", (request_id,))
+    conn.commit()
+    conn.close()
+    return True, "Request approved and book issued."
+
+
+def reject_request(request_id, note=""):
+    conn = sqlite3.connect("library.db")
+    conn.execute(
+        "UPDATE requests SET status='Rejected', note=? WHERE request_id=? AND status='Pending'",
+        (note, request_id))
+    conn.commit()
+    conn.close()
+    return True, "Request rejected."
