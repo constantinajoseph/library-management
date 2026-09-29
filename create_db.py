@@ -39,6 +39,19 @@ def init_db():
     )
     """)
 
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS requests (
+        request_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        member_id INTEGER NOT NULL,
+        book_id INTEGER NOT NULL,
+        status TEXT NOT NULL DEFAULT 'Pending',
+        requested_on TEXT NOT NULL,
+        note TEXT,
+        FOREIGN KEY (member_id) REFERENCES members (member_id),
+        FOREIGN KEY (book_id) REFERENCES books (book_id)
+    )
+    """)
+
     # Starter admin (only when there are no members yet)
     cursor.execute("SELECT COUNT(*) FROM members")
     if cursor.fetchone()[0] == 0:
