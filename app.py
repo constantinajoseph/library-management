@@ -1,5 +1,6 @@
 import streamlit as st
 from datetime import date
+from create_db import init_db
 from functions import (
     login_member,
     register_member,
@@ -10,6 +11,9 @@ from functions import (
     is_admin,
     add_book,
 )
+
+# Create tables, starter admin and sample books if the database is new
+init_db()
 
 st.title("Library Management")
 
@@ -50,6 +54,7 @@ else:
         st.session_state.member = None
         st.rerun()
 
+    # ----- Search -----
     st.header("Search for a book")
     keyword = st.text_input("Title, author or category")
     if keyword:
@@ -58,26 +63,47 @@ else:
             st.warning("No books found")
         else:
             for b in books:
-                st.write(f"ID {b[0]} | **{b[1]}** by {b[2]} | {b[3]} | Copies available: {b[4]}")
+                st.write(f"**{b[1]}** by {b[2]} | {b[3]} | Copies available: {b[4]}")
 
+    # ----- Issue -----
     st.header("Issue a book")
-    issue_id = st.number_input("Book ID to borrow", min_value=1, step=1, key="issue_id")
-    if st.button("Issue book"):
-        ok, message = issue_book(member_id, int(issue_id))
-        if ok:
-            st.success(message)
-        else:
-            st.error(message)
+    available = [b for b in search_books("") if b[4] > 0]
+    if len(available) == 0:
+        st.info("No books are available right now.")
+    else:
+        choice = st.selectbox(
+            "Choose a book to borrow",
+            available,
+            format_func=lambda b: f"{b[1]} by {b[2]} ({b[4]} available)",
+            key="issue_choice",
+        )
+        if st.button("Issue book"):
+            ok, message = issue_book(member_id, choice[0])
+            if ok:
+                st.success(message)
+            else:
+                st.error(message)
 
+    # ----- Return -----
     st.header("Return a book")
-    return_id = st.number_input("Book ID to return", min_value=1, step=1, key="return_id")
-    if st.button("Return book"):
-        ok, message = return_book(member_id, int(return_id))
-        if ok:
-            st.success(message)
-        else:
-            st.error(message)
+    to_return = get_borrowed_books(member_id)
+    if len(to_return) == 0:
+        st.info("You have no books to return.")
+    else:
+        return_choice = st.selectbox(
+            "Choose a book to return",
+            to_return,
+            format_func=lambda b: f"{b[1]} (due {b[3]})",
+            key="return_choice",
+        )
+        if st.button("Return book"):
+            ok, message = return_book(member_id, return_choice[0])
+            if ok:
+                st.success(message)
+            else:
+                st.error(message)
 
+    # ----- My borrowed books -----
     st.header("My borrowed books")
     borrowed = get_borrowed_books(member_id)
     if len(borrowed) == 0:
@@ -85,7 +111,7 @@ else:
     else:
         today = date.today().isoformat()
         for book_id, title, issue_date, due_date in borrowed:
-            line = f"ID {book_id} | **{title}** | Issued: {issue_date} | Due: {due_date}"
+            line = f"**{title}** | Issued: {issue_date} | Due: {due_date}"
             if due_date < today:
                 st.error(line + " (OVERDUE)")
             else:
