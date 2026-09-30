@@ -1,4 +1,5 @@
 import sqlite3
+import hashlib
 from datetime import date, timedelta
 
 
@@ -86,3 +87,19 @@ def return_book(transaction_id):
     conn.commit()
     conn.close()
     return "Return recorded"
+
+def register_member(reg_no, name, password):
+    if reg_no.strip() == "" or name.strip() == "" or password == "":
+        return "Please fill in all fields"
+    if member_exists(reg_no):
+        return "This registration number is already registered"
+
+    password_hash = hashlib.sha256(password.encode()).hexdigest()
+
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO members (reg_no, name, password_hash) VALUES (?, ?, ?)",
+                   (reg_no, name, password_hash))
+    conn.commit()
+    conn.close()
+    return "Registered successfully"

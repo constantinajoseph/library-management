@@ -1,13 +1,7 @@
-from functions import get_connection, return_book
 
-print(return_book(1))
-print(return_book(1))
-print(return_book(99))
+from functions import register_member, member_exists
 
-conn = get_connection()
-cursor = conn.cursor()
-cursor.execute("SELECT * FROM transactions")
-print("Transactions:", cursor.fetchall())
-cursor.execute("SELECT title, available_copies FROM books WHERE book_id = 1")
-print("Book 1:", cursor.fetchone())
-conn.close()
+print(register_member("145111999", "Anu", "mypassword"))
+print(register_member("145111999", "Anu", "mypassword"))
+print(register_member("", "Anu", "mypassword"))
+print("145111999 exists:", member_exists("145111999"))
