@@ -70,6 +70,15 @@ def flash(ok, message):
     st.rerun()
 
 
+
+
+def reset_flow():
+    st.session_state.book = None
+    st.session_state.student = None
+
+
+state = st.session_state.state
+
 # ---------- State: LOGIN ----------
 if state == "LOGIN":
     st.subheader("Librarian login")
