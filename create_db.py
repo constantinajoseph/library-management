@@ -1,91 +1,99 @@
-import sqlite3
-import hashlib
 
-# Demo "ERP" list: replace these with your friends' register numbers and names.
-DEMO_STUDENTS = [
-    ("145111268", "Constantina J"),
-    ("145111292", "Oshika Arsha A"),
-    ("145111270", "Devika V"),
-    ("145111287", "Kavyasri R"),
-    ("145111306","Rithikasri K"),
-]
+import sqlite3
+
+DB_NAME = "library.db"
+
+
+def get_connection():
+    conn = sqlite3.connect(DB_NAME)
+    conn.execute("PRAGMA foreign_keys = ON")
+    return conn
 
 
 def init_db():
-    conn = sqlite3.connect("library.db")
-    cursor = conn.cursor()
+    conn = get_connection()
+    cur = conn.cursor()
 
-    # Only used for the admin (librarian) login
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS members (
-        member_id INTEGER PRIMARY KEY AUTOINCREMENT,
-        reg_no TEXT NOT NULL UNIQUE,
-        name TEXT NOT NULL,
-        password_hash TEXT NOT NULL,
-        is_admin INTEGER NOT NULL DEFAULT 0
-    )
+    # Admin table
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS admins (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL
+        )
     """)
 
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS books (
-        book_id INTEGER PRIMARY KEY AUTOINCREMENT,
-        title TEXT NOT NULL,
-        author TEXT NOT NULL,
-        category TEXT,
-        available_copies INTEGER NOT NULL DEFAULT 1
-    )
+    # Books table
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS books (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            author TEXT NOT NULL,
+            category TEXT NOT NULL,
+            total_copies INTEGER NOT NULL,
+            available_copies INTEGER NOT NULL
+        )
     """)
 
-    # Demo student list (stands in for the college ERP)
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS students (
-        reg_no TEXT PRIMARY KEY,
-        name TEXT NOT NULL
-    )
+    # Students table
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS students (
+            reg_no TEXT PRIMARY KEY,
+            name TEXT NOT NULL
+        )
     """)
 
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS loans (
-        loan_id INTEGER PRIMARY KEY AUTOINCREMENT,
-        reg_no TEXT NOT NULL,
-        book_id INTEGER NOT NULL,
-        issue_date TEXT NOT NULL,
-        due_date TEXT NOT NULL,
-        return_date TEXT,
-        FOREIGN KEY (reg_no) REFERENCES students (reg_no),
-        FOREIGN KEY (book_id) REFERENCES books (book_id)
-    )
+    # Book loans table
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS loans (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            reg_no TEXT NOT NULL,
+            book_id INTEGER NOT NULL,
+            issue_date TEXT NOT NULL,
+            due_date TEXT NOT NULL,
+            return_date TEXT,
+            FOREIGN KEY (reg_no) REFERENCES students(reg_no),
+            FOREIGN KEY (book_id) REFERENCES books(id)
+        )
     """)
 
-    # Starter admin (only when there are no members yet)
-    cursor.execute("SELECT COUNT(*) FROM members")
-    if cursor.fetchone()[0] == 0:
-        admin_hash = hashlib.sha256("admin123".encode()).hexdigest()
-        cursor.execute(
-            "INSERT INTO members (reg_no, name, password_hash, is_admin) VALUES (?, ?, ?, 1)",
-            ("admin", "Admin", admin_hash))
+    # Create default admin only if it does not exist
+    cur.execute("""
+        INSERT OR IGNORE INTO admins (username, password)
+        VALUES (?, ?)
+    """, ("admin", "admin123"))
 
-    # Sample books (only when there are no books yet)
-    cursor.execute("SELECT COUNT(*) FROM books")
-    if cursor.fetchone()[0] == 0:
-        cursor.executemany(
-            "INSERT INTO books (title, author, category, available_copies) VALUES (?, ?, ?, ?)",
-            [
-                ("Learning Python", "Mark Lutz", "Programming", 3),
-                ("Clean Code", "Robert C. Martin", "Programming", 2),
-                ("Theory of Computation", "Michael Sipser", "Computer Science", 2),
-            ])
+    # Sample books
+    sample_books = [
+        ("Python Programming", "Reema Thareja", "Programming", 5, 5),
+        ("Java: The Complete Reference", "Herbert Schildt", "Programming", 5, 5),
+        ("Data Structures", "Seymour Lipschutz", "Computer Science", 4, 4),
+        ("Theory of Computation", "Mishra and Chandrasekaran", "TOC", 3, 3),
+        ("Database Management Systems", "Raghu Ramakrishnan", "DBMS", 4, 4)
+    ]
 
-    # Demo students (added if not already there)
-    for reg, student_name in DEMO_STUDENTS:
-        cursor.execute(
-            "INSERT OR IGNORE INTO students (reg_no, name) VALUES (?, ?)",
-            (reg, student_name))
+    cur.executemany("""
+        INSERT INTO books
+        (title, author, category, total_copies, available_copies)
+        SELECT ?, ?, ?, ?, ?
+        WHERE NOT EXISTS (
+            SELECT 1 FROM books WHERE title = ?
+        )
+    """, [(*book, book[0]) for book in sample_books])
+
+    # Demo students: replace these with your friends' demo details
+    sample_students = [
+        ("145111268", "Constantina J"),
+        ("145111270", "Devika V"),
+        ("145111287", "Kavyasri R"),
+        ("145111292", "Oshika Arsha A"),
+        ("145111306", "Rithikasri K")
+    ]
+
+    cur.executemany("""
+        INSERT OR IGNORE INTO students (reg_no, name)
+        VALUES (?, ?)
+    """, sample_students)
 
     conn.commit()
     conn.close()
-
-
-if __name__ == "__main__":
-    init_db()
-    print("Database and tables ready!")
