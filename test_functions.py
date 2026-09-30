@@ -1,13 +1,13 @@
 from functions import get_connection, member_exists
 
-# Add a test member
+# Add a test member with a real-looking registration number
 conn = get_connection()
 cursor = conn.cursor()
 cursor.execute("INSERT OR IGNORE INTO members (member_id, reg_no, name, password_hash) VALUES (?, ?, ?, ?)",
-               (1, "REG001", "Test Member", "test"))
+               (2, "145111268", "Ike", "test"))
 conn.commit()
 conn.close()
 
 # Try the function
-print("Member 1 exists:", member_exists(1))
-print("Member 99 exists:", member_exists(99))
+print("145111268 exists:", member_exists("145111268"))
+print("999999999 exists:", member_exists("999999999"))
