@@ -1,13 +1,13 @@
-from functions import get_connection, find_book
+from functions import get_connection, return_book
 
-# Add a test book
+print(return_book(1))
+print(return_book(1))
+print(return_book(99))
+
 conn = get_connection()
 cursor = conn.cursor()
-cursor.execute("INSERT OR IGNORE INTO books (book_id, title, author, category, available_copies) VALUES (?, ?, ?, ?, ?)",
-               (1, "Learning Python", "Mark Lutz", "Programming", 3))
-conn.commit()
+cursor.execute("SELECT * FROM transactions")
+print("Transactions:", cursor.fetchall())
+cursor.execute("SELECT title, available_copies FROM books WHERE book_id = 1")
+print("Book 1:", cursor.fetchone())
 conn.close()
-
-# Try the function
-print("Search 'python':", find_book("python"))
-print("Search 'cooking':", find_book("cooking"))
