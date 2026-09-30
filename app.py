@@ -1,3 +1,4 @@
+
 import streamlit as st
 from datetime import date
 from create_db import init_db
@@ -15,17 +16,18 @@ from functions import (
     MAX_BOOKS,
 )
 
-# Create tables, starter admin, sample books and demo students if the database is new
+# Create tables, starter admin, sample books and demo students
 init_db()
 
 st.title("Library Management using FSM")
 
-# =====================================================
-#  The Finite State Machine
-#  Q  = {LOGIN, SEARCH, VERIFY_ID, ID_VERIFIED, CHECK_LIMIT, ISSUED, REJECTED}
-#  q0 = LOGIN            F = {ISSUED}
-#  delta(state, event) -> next state
-# =====================================================
+# Finite State Machine
+# Q = {LOGIN, SEARCH, VERIFY_ID, ID_VERIFIED,
+#      CHECK_LIMIT, ISSUED, REJECTED}
+# q0 = LOGIN
+# F = {ISSUED}
+# delta(state, event) -> next state
+
 DELTA = {
     ("LOGIN", "login_ok"): "SEARCH",
     ("LOGIN", "login_fail"): "LOGIN",
@@ -70,8 +72,6 @@ def flash(ok, message):
     st.rerun()
 
 
-
-
 def reset_flow():
     st.session_state.book = None
     st.session_state.student = None
@@ -82,11 +82,15 @@ state = st.session_state.state
 # ---------- State: LOGIN ----------
 if state == "LOGIN":
     st.subheader("Librarian login")
+
     username = st.text_input("Username", key="login_user")
-    password = st.text_input("Password", type="password", key="login_pw")
+    password = st.text_input(
+        "Password", type="password", key="login_pw"
+    )
 
     if st.button("Log in"):
         admin = login_admin(username, password)
+
         if admin is None:
             move("login_fail")
             st.error("Wrong username or password")
@@ -98,7 +102,11 @@ if state == "LOGIN":
 # ---------- Logged in ----------
 else:
     col_who, col_out = st.columns([4, 1])
-    col_who.write(f"Logged in as **{st.session_state.admin}** (Admin)")
+
+    col_who.write(
+        f"Logged in as **{st.session_state.admin}** (Admin)"
+    )
+
     if col_out.button("Log out"):
         st.session_state.state = "LOGIN"
         st.session_state.history = ["LOGIN"]
@@ -109,28 +117,43 @@ else:
     if st.session_state.flash:
         ok, message = st.session_state.flash
         st.session_state.flash = None
+
         if ok:
             st.success(message)
         else:
             st.error(message)
 
-    # ----- FSM status -----
+    # FSM status
     st.write(f"**Current state:** `{state}`")
-    st.write("**Path so far:** " + " → ".join(st.session_state.history))
-    with st.expander("Show FSM diagram", expanded=False):
-        st.graphviz_chart(fsm_diagram(state))
+    st.write(
+        "**Path so far:** "
+        + " → ".join(st.session_state.history)
+    )
     st.divider()
 
     # ---------- State: SEARCH ----------
     if state == "SEARCH":
-        st.subheader("Step 1: Search for the book the student wants")
-        keyword = st.text_input("Title, author or category (leave empty to see all)")
+        st.subheader(
+            "Step 1: Search for the book the student wants"
+        )
+
+        keyword = st.text_input(
+            "Title, author or category (leave empty to see all)"
+        )
+
         books = search_books(keyword)
+
         if len(books) == 0:
             st.warning("No books found")
+
         for b in books:
             col_info, col_btn = st.columns([4, 1])
-            col_info.write(f"**{b[1]}** by {b[2]} | {b[3]} | Copies available: {b[4]}")
+
+            col_info.write(
+                f"**{b[1]}** by {b[2]} | {b[3]} | "
+                f"Copies available: {b[4]}"
+            )
+
             if col_btn.button("Select", key=f"sel_{b[0]}"):
                 if b[4] > 0:
                     st.session_state.book = b
@@ -138,24 +161,43 @@ else:
                     st.rerun()
                 else:
                     move("book_unavailable")
-                    flash(False, f"'{b[1]}' is not available right now.")
+                    flash(
+                        False,
+                        f"'{b[1]}' is not available right now."
+                    )
 
     # ---------- State: VERIFY_ID ----------
     elif state == "VERIFY_ID":
         book = st.session_state.book
+
         st.subheader("Step 2: Verify the student's ID")
-        st.success(f"Yes, the book is available: **{book[1]}** by {book[2]}")
-        reg = st.text_input("Student register number", key="reg_input")
+
+        st.success(
+            f"Yes, the book is available: **{book[1]}** "
+            f"by {book[2]}"
+        )
+
+        reg = st.text_input(
+            "Student register number", key="reg_input"
+        )
 
         col_v, col_c = st.columns(2)
+
         if col_v.button("Verify ID"):
             student = get_student(reg)
+
             if student is None:
                 move("id_invalid")
-                flash(False, f"Invalid register number: '{reg.strip()}' is not in the student list.")
-            st.session_state.student = student
-            move("id_valid")
-            st.rerun()
+                flash(
+                    False,
+                    f"Invalid register number: "
+                    f"'{reg.strip()}' is not in the student list."
+                )
+            else:
+                st.session_state.student = student
+                move("id_valid")
+                st.rerun()
+
         if col_c.button("Cancel"):
             reset_flow()
             move("cancel")
@@ -165,22 +207,39 @@ else:
     elif state == "ID_VERIFIED":
         book = st.session_state.book
         student = st.session_state.student
+
         st.subheader("Step 3: Confirm the student")
-        st.success(f"ID verified: **{student[1]}** (Register number: {student[0]})")
-        st.write(f"Book to issue: **{book[1]}** by {book[2]}")
-        st.write(f"Books currently borrowed: {count_active_loans(student[0])} of {MAX_BOOKS}")
+
+        st.success(
+            f"ID verified: **{student[1]}** "
+            f"(Register number: {student[0]})"
+        )
+
+        st.write(
+            f"Book to issue: **{book[1]}** by {book[2]}"
+        )
+
+        st.write(
+            f"Books currently borrowed: "
+            f"{count_active_loans(student[0])} of {MAX_BOOKS}"
+        )
 
         col_ok, col_wrong, col_c = st.columns(3)
+
         if col_ok.button("Confirm and issue book"):
-            move("confirm")                                   # -> CHECK_LIMIT
+            move("confirm")
+
             ok, message = issue_book(student[0], book[0])
-            move("can_issue" if ok else "cannot_issue")       # -> ISSUED or REJECTED
+
+            move("can_issue" if ok else "cannot_issue")
             st.session_state.result = message
             st.rerun()
+
         if col_wrong.button("Not this student"):
             st.session_state.student = None
             move("wrong_student")
             st.rerun()
+
         if col_c.button("Cancel"):
             reset_flow()
             move("cancel")
@@ -190,6 +249,7 @@ else:
     elif state == "ISSUED":
         st.subheader("Book issued")
         st.success(st.session_state.result)
+
         if st.button("Serve the next student"):
             reset_flow()
             move("new_search")
@@ -199,6 +259,7 @@ else:
     elif state == "REJECTED":
         st.subheader("Book not issued")
         st.error(st.session_state.result)
+
         if st.button("Serve the next student"):
             reset_flow()
             move("new_search")
@@ -207,57 +268,100 @@ else:
     # ---------- Other admin tools ----------
     st.divider()
     st.subheader("Other admin tools")
-    tab_ret, tab_loans, tab_book, tab_stud = st.tabs(
-        ["Return a book", "Current loans", "Add book", "Add student"])
 
+    tab_ret, tab_loans, tab_book, tab_stud = st.tabs(
+        ["Return a book", "Current loans", "Add book", "Add student"]
+    )
+
+    # ---------- Return a book ----------
     with tab_ret:
-        r_reg = st.text_input("Student register number", key="ret_reg")
+        r_reg = st.text_input(
+            "Student register number", key="ret_reg"
+        )
+
         if r_reg:
             r_student = get_student(r_reg)
+
             if r_student is None:
                 st.warning("Invalid register number")
             else:
-                st.success(f"ID verified: {r_student[1]} ({r_student[0]})")
+                st.success(
+                    f"ID verified: {r_student[1]} "
+                    f"({r_student[0]})"
+                )
+
                 loans = get_student_loans(r_student[0])
+
                 if len(loans) == 0:
-                    st.info(f"{r_student[1]} has no borrowed books.")
+                    st.info(
+                        f"{r_student[1]} has no borrowed books."
+                    )
                 else:
                     choice = st.selectbox(
                         "Book to return",
                         loans,
-                        format_func=lambda l: f"{l[1]} (due {l[3]})",
+                        format_func=lambda l: (
+                            f"{l[1]} (due {l[3]})"
+                        ),
                         key="ret_choice",
                     )
+
                     if st.button("Return book"):
-                        ok, message = return_book(r_student[0], choice[0])
+                        ok, message = return_book(
+                            r_student[0], choice[0]
+                        )
                         flash(ok, message)
 
+    # ---------- Current loans ----------
     with tab_loans:
         rows = get_all_loans()
+
         if len(rows) == 0:
             st.write("No books are currently issued.")
         else:
             today = date.today().isoformat()
+
             for reg_no, s_name, title, issue_date, due_date in rows:
-                line = f"**{title}** | {s_name} ({reg_no}) | Issued: {issue_date} | Due: {due_date}"
+                line = (
+                    f"**{title}** | {s_name} ({reg_no}) | "
+                    f"Issued: {issue_date} | Due: {due_date}"
+                )
+
                 if due_date < today:
                     st.error(line + " (OVERDUE)")
                 else:
                     st.write(line)
 
+    # ---------- Add a book ----------
     with tab_book:
         b_title = st.text_input("Title", key="b_title")
         b_author = st.text_input("Author", key="b_author")
         b_category = st.text_input("Category", key="b_category")
-        b_copies = st.number_input("Copies", min_value=1, step=1, key="b_copies")
+
+        b_copies = st.number_input(
+            "Copies", min_value=1, step=1, key="b_copies"
+        )
+
         if st.button("Add book"):
-            ok, message = add_book(b_title, b_author, b_category, int(b_copies))
+            ok, message = add_book(
+                b_title,
+                b_author,
+                b_category,
+                int(b_copies)
+            )
             flash(ok, message)
 
+    # ---------- Add a student ----------
     with tab_stud:
         st.caption("Adds a student to the demo ERP list.")
-        s_reg = st.text_input("Register number", key="s_reg")
-        s_name = st.text_input("Student name", key="s_name")
+
+        s_reg = st.text_input(
+            "Register number", key="s_reg"
+        )
+        s_name = st.text_input(
+            "Student name", key="s_name"
+        )
+
         if st.button("Add student"):
             ok, message = add_student(s_reg, s_name)
             flash(ok, message)
