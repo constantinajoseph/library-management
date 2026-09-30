@@ -1,11 +1,21 @@
 import sqlite3
 import hashlib
 
+# Demo "ERP" list: replace these with your friends' register numbers and names.
+DEMO_STUDENTS = [
+    ("145111268", "Constantina J"),
+    ("145111292", "Oshika Arsha A"),
+    ("145111270", "Devika V"),
+    ("145111287", "Kavyasri R"),
+    ("145111306","Rithikasri K"),
+]
+
 
 def init_db():
     conn = sqlite3.connect("library.db")
     cursor = conn.cursor()
 
+    # Only used for the admin (librarian) login
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS members (
         member_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -26,28 +36,23 @@ def init_db():
     )
     """)
 
+    # Demo student list (stands in for the college ERP)
     cursor.execute("""
-    CREATE TABLE IF NOT EXISTS transactions (
-        transaction_id INTEGER PRIMARY KEY AUTOINCREMENT,
-        member_id INTEGER NOT NULL,
-        book_id INTEGER NOT NULL,
-        issue_date TEXT NOT NULL,
-        due_date TEXT NOT NULL,
-        return_date TEXT,
-        FOREIGN KEY (member_id) REFERENCES members (member_id),
-        FOREIGN KEY (book_id) REFERENCES books (book_id)
+    CREATE TABLE IF NOT EXISTS students (
+        reg_no TEXT PRIMARY KEY,
+        name TEXT NOT NULL
     )
     """)
 
     cursor.execute("""
-    CREATE TABLE IF NOT EXISTS requests (
-        request_id INTEGER PRIMARY KEY AUTOINCREMENT,
-        member_id INTEGER NOT NULL,
+    CREATE TABLE IF NOT EXISTS loans (
+        loan_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        reg_no TEXT NOT NULL,
         book_id INTEGER NOT NULL,
-        status TEXT NOT NULL DEFAULT 'Pending',
-        requested_on TEXT NOT NULL,
-        note TEXT,
-        FOREIGN KEY (member_id) REFERENCES members (member_id),
+        issue_date TEXT NOT NULL,
+        due_date TEXT NOT NULL,
+        return_date TEXT,
+        FOREIGN KEY (reg_no) REFERENCES students (reg_no),
         FOREIGN KEY (book_id) REFERENCES books (book_id)
     )
     """)
@@ -70,6 +75,12 @@ def init_db():
                 ("Clean Code", "Robert C. Martin", "Programming", 2),
                 ("Theory of Computation", "Michael Sipser", "Computer Science", 2),
             ])
+
+    # Demo students (added if not already there)
+    for reg, student_name in DEMO_STUDENTS:
+        cursor.execute(
+            "INSERT OR IGNORE INTO students (reg_no, name) VALUES (?, ?)",
+            (reg, student_name))
 
     conn.commit()
     conn.close()
