@@ -70,31 +70,6 @@ def flash(ok, message):
     st.rerun()
 
 
-def fsm_diagram(current):
-    dot = [
-        "digraph FSM {",
-        "rankdir=LR;",
-        'bgcolor="white";',
-        'node [shape=circle, style=filled, fillcolor="white", fontcolor="black", fontsize=10];',
-        "edge [fontsize=9];",
-        'START [shape=point, fillcolor="black"];',
-        "START -> LOGIN;",
-        "ISSUED [shape=doublecircle];",
-        f'{current} [fillcolor="#FFD54F"];',
-    ]
-    for (s, e), t in DELTA.items():
-        dot.append(f'{s} -> {t} [label="{e}"];')
-    dot.append("}")
-    return "\n".join(dot)
-
-
-def reset_flow():
-    st.session_state.book = None
-    st.session_state.student = None
-
-
-state = st.session_state.state
-
 # ---------- State: LOGIN ----------
 if state == "LOGIN":
     st.subheader("Librarian login")
